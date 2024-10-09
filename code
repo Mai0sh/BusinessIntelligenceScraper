@@ -1,0 +1,55 @@
+import requests
+from bs4 import BeautifulSoup
+import csv
+import time
+
+# arXiv search URL for Business Intelligence papers
+SEARCH_URL = 'https://arxiv.org/search/?query=Business+Intelligence&searchtype=all&source=header'
+
+def get_articles(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+
+    articles = []
+
+    # Each result on arXiv is in a li with class 'arxiv-result'
+    for result in soup.find_all('li', class_='arxiv-result'):
+        # Extract title
+        title_tag = result.find('p', class_='title')
+        title = title_tag.text.strip() if title_tag else "No title available"
+
+        # Extract link
+        link_tag = result.find('p', class_='list-title')
+        link = link_tag.a['href'] if link_tag and link_tag.a else "No link available"
+
+        # Extract abstract
+        abstract_tag = result.find('p', class_='abstract')
+        abstract = abstract_tag.text.strip() if abstract_tag else "No abstract available"
+
+        # Store the article information
+        articles.append({
+            'title': title,
+            'link': link,
+            'abstract': abstract
+        })
+
+        # Adding a delay to prevent being blocked by the server
+        time.sleep(2)
+
+    return articles
+
+def save_articles_to_csv(articles, filename='business_intelligence_arxiv.csv'):
+    if not articles:
+        print("No articles found to save.")
+        return
+
+    keys = articles[0].keys()
+    with open(filename, 'w', newline='', encoding='utf-8') as f:
+        dict_writer = csv.DictWriter(f, fieldnames=keys)
+        dict_writer.writeheader()
+        dict_writer.writerows(articles)
+
+if __name__ == '__main__':
+    articles = get_articles(SEARCH_URL)
+    save_articles_to_csv(articles)
+    print(f"Collected {len(articles)} articles and saved to CSV.")
